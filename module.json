@@ -1,0 +1,21 @@
+{
+  "id": "token-visibility-plus",
+  "title": "TokenVisibility+",
+  "description": "Erlaubt es, Token über Ausnahmen im HUD gezielt für bestimmte Spieler sichtbar oder unsichtbar zu machen.",
+  "version": "0.0.1",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "authors": [
+    {
+      "name": "Grimheimr"
+    }
+  ],
+  "esmodules": [
+    "token-visibility-plus.js"
+  ],
+  "styles": [
+    "token-visibility-plus.css"
+  ]
+}
