@@ -1,6 +1,6 @@
 /**
  * TokenVisibility+ Modul für Foundry VTT v14
- * Radikale Lichtquellen-Zerstörung, Sicht-Filterung und robustes GM-PIXI-Icon-Overlay (Signalrot).
+ * Radikale Lichtquellen-Zerstörung, Sicht-Filterung und intelligentes GM-Status-Overlay (Rot/Orange & Alpha-Steuerung).
  */
 
 const TVP_EYE_ICON = "icons/svg/eye.svg";
@@ -19,18 +19,25 @@ function checkTvpVisibility(tokenDoc, userId) {
   }
 }
 
-// Hilfsfunktion: Berechnet nur die reinen Grafikwerte (Alpha)
+// Hilfsfunktion: Berechnet die reine GM-Transparenz (Alpha)
 function getGmAlpha(tokenDoc) {
   const isGlobalHidden = tokenDoc.getFlag("token-visibility-plus", "globalHidden") || false;
   const exceptions = tokenDoc.getFlag("token-visibility-plus", "exceptions") || [];
 
-  if (isGlobalHidden || exceptions.length > 0) {
-    return 0.35; // Beide Zustände einheitlich auf 35% Alpha für den GM
+  // Verbesserung 2: Wenn global Sichtbar, aber Ausnahmen aktiv -> KEINE Transparenz (1.0)
+  if (!isGlobalHidden && exceptions.length > 0) {
+    return 1.0;
   }
+  
+  // Wenn global Unsichtbar (egal ob mit oder ohne Ausnahmen) -> 35% Transparenz
+  if (isGlobalHidden) {
+    return 0.35;
+  }
+  
   return 1.0;
 }
 
-// Hilfsfunktion: Zeichnet oder löscht ein direktes PIXI-Sprite auf dem Token-Container (Nur GM!)
+// Hilfsfunktion: Zeichnet oder löscht das PIXI-Sprite und steuert die Farbe (Nur GM!)
 function updateGmIcon(token) {
   if (!token || !game.user.isGM) return;
 
@@ -39,34 +46,41 @@ function updateGmIcon(token) {
   const exceptions = tokenDoc.getFlag("token-visibility-plus", "exceptions") || [];
 
   const isZustandA = isGlobalHidden && exceptions.length === 0;
-  const isZustandB = isGlobalHidden || exceptions.length > 0;
+  const isZustandB_Hidden = isGlobalHidden && exceptions.length > 0;
+  const isZustandB_Visible = !isGlobalHidden && exceptions.length > 0;
 
-  // Wir wollen das Icon NUR bei Zustand B (wenn es nicht Zustand A ist)
-  const shouldHaveIcon = isZustandB && !isZustandA;
+  // Ein Icon wird benötigt, wenn irgendeine Art von Ausnahme/Spezialregel (Zustand B) aktiv ist
+  const shouldHaveIcon = isZustandB_Hidden || isZustandB_Visible;
 
-  // Falls das Sprite bereits existiert
   let tvpSprite = token.getChildByName("tvpEyeIcon");
 
   if (shouldHaveIcon) {
     if (!tvpSprite) {
-      // Erstelle ein neues PIXI-Sprite direkt aus Foundrys SVG-Pfad
       tvpSprite = PIXI.Sprite.from(TVP_EYE_ICON);
       tvpSprite.name = "tvpEyeIcon";
-      
-      // Positioniere es in der oberen rechten Ecke des Tokens
       tvpSprite.anchor.set(0.5);
-      tvpSprite.width = token.w * 0.35;  // 35% der Tokenbreite
+      tvpSprite.width = token.w * 0.35;
       tvpSprite.height = token.w * 0.35;
       tvpSprite.x = token.w * 0.8;
       tvpSprite.y = token.h * 0.2;
-      
-      // Leuchtend rot einfärben und volle Leuchtkraft geben
-      tvpSprite.tint = 0xFF3333; // Signalrot
-      tvpSprite.alpha = 1.0;     // Volle Deckkraft für maximalen Kontrast
-      
+      tvpSprite.alpha = 1.0; // Volle Leuchtkraft
       token.addChild(tvpSprite);
     }
+
+    // Farbsteuerung für das Auge:
+    if (isZustandB_Hidden) {
+      // Verbesserung 1: Global Unsichtbar + Ausnahmen -> Leuchtend Orange
+      tvpSprite.tint = 0xFF9800; 
+    } else if (isZustandB_Visible) {
+      // Verbesserung 2: Global Sichtbar + Ausnahmen -> Leuchtend Orange
+      tvpSprite.tint = 0xFF9800;
+    } else {
+      // Fallback (z.B. falls sich logisch was verschiebt) -> Signalrot
+      tvpSprite.tint = 0xFF3333;
+    }
+
   } else {
+    // Wenn Zustand A (Keine Ausnahmen) oder Normalzustand -> Icon weg
     if (tvpSprite) {
       token.removeChild(tvpSprite);
       tvpSprite.destroy();
@@ -77,7 +91,7 @@ function updateGmIcon(token) {
 Hooks.once("init", () => {
   console.log("TokenVisibility+ | Initialisiere Modul...");
 
-  // 1. REINER VISIBILITY-FILTER (Garantiert ohne Render-Schleifen)
+  // 1. REINER VISIBILITY-FILTER
   Object.defineProperty(Token.prototype, "isVisible", {
     get: function() {
       if (game.user.isGM) {
@@ -125,7 +139,7 @@ Hooks.once("init", () => {
   };
 });
 
-// 4. DESIGN-WECHSEL HOOK (Aktualisiert das PIXI-Overlay live)
+// 4. DESIGN-WECHSEL HOOK
 Hooks.on("updateToken", (tokenDoc, changes, options, userId) => {
   const hasModChanges = changes.flags?.["token-visibility-plus"] !== undefined;
   const hasHiddenChanges = changes.hidden !== undefined;
@@ -139,13 +153,13 @@ Hooks.on("updateToken", (tokenDoc, changes, options, userId) => {
   
   if (game.user.isGM) {
     if (token.mesh) token.mesh.alpha = getGmAlpha(tokenDoc);
-    updateGmIcon(token); // Setzt das Grafik-Auge direkt auf die Karte
+    updateGmIcon(token);
   }
 
   canvas.perception.initialize({ lighting: true, sight: true });
 });
 
-// 5. INITIALES SCANNING BEIM LADEN DER SCENE & TOKEN-REFRESH
+// 5. INITIALES SCANNING BEIM LADEN DER SCENE & REFRESH
 Hooks.on("canvasReady", () => {
   if (!game.user.isGM) return;
   for (let token of canvas.tokens.placeables) {
@@ -153,7 +167,6 @@ Hooks.on("canvasReady", () => {
   }
 });
 
-// Zusätzlicher v14 Sicherheits-Hook: Falls Token neu gezeichnet werden, erzwinge das Auge
 Hooks.on("refreshToken", (token, flags) => {
   if (game.user.isGM && flags.refreshMesh) {
     updateGmIcon(token);
