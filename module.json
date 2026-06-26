@@ -1,10 +1,10 @@
 {
-  "id": "token-visibility-plus",
-  "title": "TokenVisibility+",
-  "description": "Erlaubt es, Token über Ausnahmen im HUD gezielt für bestimmte Spieler sichtbar oder unsichtbar zu machen.",
-  "version": "0.0.3",
-  "manifest": "https://github.com/m1lklinG/TokenVisibilityPlus/releases/latest/download/module.json",
-  "download": "https://github.com/m1lklinG/TokenVisibilityPlus/releases/download/0.0.3/token-visibility-plus.zip",
+  "id": "tokensight-plus",
+  "title": "TokenSight+",
+  "description": "Erlaubt es, Token gezielt für bestimmte Spieler unsichtbar zu machen.",
+  "version": "0.0.4",
+  "manifest": "https://github.com/m1lklinG/TokenSightPlus/releases/latest/download/module.json",
+  "download": "https://github.com/m1lklinG/TokenSightPlus/releases/download/0.0.4/tokensight-plus.zip",
   "compatibility": {
     "minimum": "14",
     "verified": "14"
@@ -15,9 +15,9 @@
     }
   ],
   "esmodules": [
-    "token-visibility-plus.js"
+    "tokensight-plus.js"
   ],
   "styles": [
-    "token-visibility-plus.css"
+    "tokensight-plus.css"
   ]
 }
